@@ -28,6 +28,7 @@ import threading
 import traceback
 import json
 from datetime import datetime
+import threading
 
 
 import paramiko
@@ -64,9 +65,8 @@ class Server (paramiko.ServerInterface):
         data = {}
         data['username'] = username
         data['password'] = password
-        data['src_ip'] = addr[0]
-        data['src_ip'] = addr[0]
-        data['src_port'] = addr[1]
+        data['src_ip'] = self.addr
+        data['src_port'] = self.port
         data['timestamp'] = datetime.isoformat(datetime.now())
         logfile.write(json.dumps(data) + '\n')
         logfile.flush()
@@ -87,6 +87,31 @@ class Server (paramiko.ServerInterface):
                                   pixelheight, modes):
         return False
 
+    def set_ip_param(self, addr):
+        self.addr = addr[0]
+        self.port = addr[1]
+
+def handle_client(client, addr):
+    try:
+        t = paramiko.Transport(client)
+        try:
+            t.load_server_moduli()
+        except:
+            raise
+        t.add_server_key(host_key)
+        server = Server()
+        server.set_ip_param(addr)
+        try:
+            t.start_server(server=server)
+        except paramiko.SSHException:
+            print('*** SSH negotiation failed.')
+            return
+
+        # wait for auth
+        chan = t.accept(20)
+    except:
+        print('***SSH connect failure')
+        return
 
 # now connect
 try:
@@ -105,23 +130,6 @@ except Exception as e:
 
 while True:
     client, addr = sock.accept()
-    
-    try:
-        t = paramiko.Transport(client)
-        try:
-            t.load_server_moduli()
-        except:
-            raise
-        t.add_server_key(host_key)
-        server = Server()
-        try:
-            t.start_server(server=server)
-        except paramiko.SSHException:
-            print('*** SSH negotiation failed.')
-            continue
-    
-        # wait for auth
-        chan = t.accept(20)
-
-    except:
-        pass
+    t = threading.Thread(target=handle_client, args=(client, addr,))
+    t.setDaemon(True)
+    t.start()
