@@ -30,37 +30,50 @@ import json
 from datetime import datetime
 import threading
 import argparse
-
+import logging
 
 import paramiko
 from paramiko.py3compat import b, u, decodebytes
 
+have_daemon = True
+try:
+    import daemon
+except:
+    logging.warning("No daemon support available, install python-daemon if feature is needed")
+    have_daemon = False
 
 parser = argparse.ArgumentParser(description='Passwords of SSH Intruders Transferred to Text')
 parser.add_argument('-o', '--output', default='passwords.log', help='File to export collected data')
 parser.add_argument('-k', '--key', default='test_rsa.key', help='Host RSA key')
-parser.add_argument('-l', '--log', default='pshitt.log', help='File to log piramiko debug')
+parser.add_argument('-l', '--log', default='pshitt.log', help='File to log info and debug')
 parser.add_argument('-p', '--port', type=int, default=2200, help='TCP port to listen to')
 parser.add_argument('-t', '--threads', type=int, default=50, help='Maximum number of client threads')
+parser.add_argument('-v', '--verbose', default=False, action="count", help="Show verbose output, use multiple times increase verbosity")
+if have_daemon:
+    parser.add_argument('-D', '--daemon', default=False, action="store_true", help="Run as unix daemon")
 
 args = parser.parse_args()
 
-logfile = open(args.output, 'a')
+if args.verbose >= 3:
+    loglevel=logging.DEBUG
+elif args.verbose >= 2:
+    loglevel=logging.INFO
+elif args.verbose >= 1:
+    loglevel=logging.WARNING
+else:
+    loglevel=logging.ERROR
 
-# setup logging
-paramiko.util.log_to_file(args.log)
+if not os.path.isabs(args.output):
+    args.output = os.path.join(os.getcwd(), args.output)
 
-host_key = paramiko.RSAKey(filename=args.key)
+if not os.path.isabs(args.key):
+    args.key = os.path.join(os.getcwd(), args.key)
+
+if not os.path.isabs(args.log):
+    args.log = os.path.join(os.getcwd(), args.log)
+
 
 class Server (paramiko.ServerInterface):
-    # 'data' is the output of base64.encodestring(str(key))
-    # (using the "user_rsa_key" files)
-    data = (b'AAAAB3NzaC1yc2EAAAABIwAAAIEAyO4it3fHlmGZWJaGrfeHOVY7RWO3P9M7hp'
-            b'fAu7jJ2d7eothvfeuoRFtJwhUmZDluRdFyhFY/hFAh76PJKGAusIqIQKlkJxMC'
-            b'KDqIexkgHAfID/6mqvmnSJf0b5W8v5h2pI/stOSwTQ+pxVhwJ9ctYDhRSlF0iT'
-            b'UWT10hcuO4Ks8=')
-    good_pub_key = paramiko.RSAKey(data=decodebytes(data))
-
     def __init__(self):
         self.event = threading.Event()
 
@@ -76,12 +89,14 @@ class Server (paramiko.ServerInterface):
         data['src_ip'] = self.addr
         data['src_port'] = self.port
         data['timestamp'] = datetime.isoformat(datetime.now())
-        logfile.write(json.dumps(data) + '\n')
-        logfile.flush()
+        logging.debug("%s:%d tried username '%s' with '%s'" % (self.addr, self.port,
+                      username, password))
+        self.logfile.write(json.dumps(data) + '\n')
+        self.logfile.flush()
         return paramiko.AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
-        print('Auth attempt with key: ' + u(hexlify(key.get_fingerprint())))
+        logging.debug('Auth attempt with key: ' + u(hexlify(key.get_fingerprint())))
         return paramiko.AUTH_FAILED
 
     def get_allowed_auths(self, username):
@@ -99,7 +114,11 @@ class Server (paramiko.ServerInterface):
         self.addr = addr[0]
         self.port = addr[1]
 
-def handle_client(client, addr):
+    def set_logfile(self, logfile):
+        self.logfile = logfile
+
+
+def handle_client(client, addr, logfile, host_key):
     try:
         t = paramiko.Transport(client)
         try:
@@ -109,39 +128,70 @@ def handle_client(client, addr):
         t.add_server_key(host_key)
         server = Server()
         server.set_ip_param(addr)
+        server.set_logfile(logfile)
         try:
             t.start_server(server=server)
         except paramiko.SSHException:
-            print('*** SSH negotiation failed.')
+            logging.info('SSH negotiation failed.')
             return
 
         # wait for auth
         chan = t.accept(20)
     except:
-        print('***SSH connect failure')
+        logging.info('SSH connect failure')
         return
 
-# now connect
-try:
-    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(('', args.port))
-except Exception as e:
-    traceback.print_exc()
-    sys.exit(1)
-
-try:
-    sock.listen(100)
-except Exception as e:
-    traceback.print_exc()
-    sys.exit(1)
-
-while True:
-    client, addr = sock.accept()
-    if len(threading.enumerate()) <= args.threads * 2:
-        t = threading.Thread(target=handle_client, args=(client, addr,))
-        t.setDaemon(True)
-        t.start()
+def setup_logging(args):
+    if args.log:
+        logging.basicConfig(filename=args.log,
+                            format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                            level=loglevel)
     else:
-        print('*** Too much clients')
-        client.close()
+        logging.basicConfig(level=loglevel)
+
+def setup_paramiko(args):
+    paramiko.util.log_to_file(args.log, level=loglevel)
+    host_key = paramiko.RSAKey(filename=args.key)
+    return host_key
+
+def main_task(args):
+
+    setup_logging(args)
+
+    host_key = setup_paramiko(args)
+
+    logfile = open(args.output, 'a')
+
+    logging.info('Starting SSH server')
+    # now connect
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(('', args.port))
+    except Exception as e:
+        traceback.print_exc()
+        sys.exit(1)
+
+    try:
+        sock.listen(100)
+    except Exception as e:
+        traceback.print_exc()
+        sys.exit(1)
+
+    while True:
+        client, addr = sock.accept()
+        if len(threading.enumerate()) <= args.threads * 2:
+            logging.debug('Accepted new client: %s:%d' % addr)
+            t = threading.Thread(target=handle_client, args=(client, addr, logfile, host_key))
+            t.setDaemon(True)
+            t.start()
+        else:
+            logging.info('Too much clients')
+            client.close()
+
+if have_daemon and args.daemon:
+    #with daemon.DaemonContext(stdout=sys.stdout, stderr=sys.stderr):
+    with daemon.DaemonContext():
+        main_task(args)
+else:
+    main_task(args)
