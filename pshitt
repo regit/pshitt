@@ -36,7 +36,7 @@ import paramiko
 from paramiko.py3compat import b, u, decodebytes
 
 
-parser = argparse.ArgumentParser(description='Password SSH In The Text')
+parser = argparse.ArgumentParser(description='Passwords of SSH Intruders Transferred to Text')
 parser.add_argument('-o', '--output', default='passwords.log', help='File to export collected data')
 parser.add_argument('-k', '--key', default='test_rsa.key', help='Host RSA key')
 parser.add_argument('-l', '--log', default='pshitt.log', help='File to log piramiko debug')
