@@ -69,6 +69,7 @@ class Server (paramiko.ServerInterface):
         data['src_port'] = addr[1]
         data['timestamp'] = datetime.isoformat(datetime.now())
         logfile.write(json.dumps(data) + '\n')
+        logfile.flush()
         return paramiko.AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
