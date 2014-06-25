@@ -5,10 +5,10 @@ PSHITT
 Introduction
 ============
 
-pshitt (for Passwords of SSH Intruders Transferred to Text) is lightweight
+pshitt (for Passwords of SSH Intruders Transferred to Text) is a lightweight
 fake SSH server designed to collect authentication data sent by intruders.
-It basically collect username and password used by SSH bruteforce and
-write the extracted data to a file in JSON format.
+It basically collects username and password used by SSH bruteforce software
+and writes the extracted data to a file in JSON format.
 
 pshitt is written in Python and use paramiko to implement the SSH layer.
 
