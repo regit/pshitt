@@ -52,8 +52,6 @@ paramiko.util.log_to_file(args.log)
 
 host_key = paramiko.RSAKey(filename=args.key)
 
-addr = None
-
 class Server (paramiko.ServerInterface):
     # 'data' is the output of base64.encodestring(str(key))
     # (using the "user_rsa_key" files)
