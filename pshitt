@@ -50,6 +50,7 @@ parser.add_argument('-k', '--key', default='test_rsa.key', help='Host RSA key')
 parser.add_argument('-l', '--log', default='pshitt.log', help='File to log info and debug')
 parser.add_argument('-p', '--port', type=int, default=2200, help='TCP port to listen to')
 parser.add_argument('-t', '--threads', type=int, default=50, help='Maximum number of client threads')
+parser.add_argument('-V', '--version', default='SSH-2.0-OpenSSH_6.6.1p1 Debian-5', help='SSH local version to advertise')
 parser.add_argument('-v', '--verbose', default=False, action="count", help="Show verbose output, use multiple times increase verbosity")
 if have_daemon:
     parser.add_argument('-D', '--daemon', default=False, action="store_true", help="Run as unix daemon")
@@ -120,9 +121,10 @@ class Server (paramiko.ServerInterface):
         self.logfile = logfile
 
 
-def handle_client(client, addr, logfile, host_key):
+def handle_client(client, addr, logfile, host_key, args):
     try:
         t = paramiko.Transport(client)
+        t.local_version = args.version
         try:
             t.load_server_moduli()
         except:
@@ -184,7 +186,7 @@ def main_task(args):
         client, addr = sock.accept()
         if len(threading.enumerate()) <= args.threads * 2:
             logging.debug('Accepted new client: %s:%d' % addr)
-            t = threading.Thread(target=handle_client, args=(client, addr, logfile, host_key))
+            t = threading.Thread(target=handle_client, args=(client, addr, logfile, host_key, args))
             t.setDaemon(True)
             t.start()
         else:
