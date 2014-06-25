@@ -130,6 +130,9 @@ except Exception as e:
 
 while True:
     client, addr = sock.accept()
-    t = threading.Thread(target=handle_client, args=(client, addr,))
-    t.setDaemon(True)
-    t.start()
+    if threading.enumerate() < 2 * 30 + 1:
+        t = threading.Thread(target=handle_client, args=(client, addr,))
+        t.setDaemon(True)
+        t.start()
+    else:
+        conn.close()
