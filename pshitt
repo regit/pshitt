@@ -35,7 +35,6 @@ import argparse
 import logging
 
 import paramiko
-from paramiko.py3compat import b, u, decodebytes
 
 have_daemon = True
 try:
@@ -99,7 +98,7 @@ class Server (paramiko.ServerInterface):
         return paramiko.AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
-        logging.debug('Auth attempt with key: ' + u(hexlify(key.get_fingerprint())))
+        logging.debug('Auth attempt with key: ' + hexlify(key.get_fingerprint()))
         return paramiko.AUTH_FAILED
 
     def get_allowed_auths(self, username):
