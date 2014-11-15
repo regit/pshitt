@@ -79,6 +79,9 @@ class Server (paramiko.ServerInterface):
     def __init__(self):
         self.event = threading.Event()
 
+    def set_transport(self, transport):
+        self.transport = transport
+
     def check_channel_request(self, kind, chanid):
         if kind == 'session':
             return paramiko.OPEN_SUCCEEDED
@@ -91,6 +94,7 @@ class Server (paramiko.ServerInterface):
         data['src_ip'] = self.addr
         data['src_port'] = self.port
         data['timestamp'] = datetime.isoformat(datetime.now())
+        data['software_version'] = self.transport.remote_version
         logging.debug("%s:%d tried username '%s' with '%s'" % (self.addr, self.port,
                       username, password))
         self.logfile.write(json.dumps(data) + '\n')
@@ -137,6 +141,8 @@ def handle_client(client, addr, logfile, host_key, args):
         except paramiko.SSHException:
             logging.info('SSH negotiation failed.')
             return
+
+        server.set_transport(t)
 
         # wait for auth
         chan = t.accept(20)
