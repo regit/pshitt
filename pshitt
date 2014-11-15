@@ -92,7 +92,10 @@ class Server (paramiko.ServerInterface):
         data = {}
         data['username'] = username
         data['password'] = password
-        data['src_ip'] = self.addr
+        if self.addr.startswith('::ffff:'):
+            data['src_ip'] = self.addr.replace('::ffff:','')
+        else:
+            data['src_ip'] = self.addr
         data['src_port'] = self.port
         data['timestamp'] = datetime.isoformat(datetime.now())
         try:
