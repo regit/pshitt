@@ -95,7 +95,12 @@ class Server (paramiko.ServerInterface):
         data['src_ip'] = self.addr
         data['src_port'] = self.port
         data['timestamp'] = datetime.isoformat(datetime.now())
-        data['software_version'] = self.transport.remote_version
+        try:
+            rversion = self.transport.remote_version.split('-', 2)[2]
+            data['software_version'] = rversion
+        except:
+            data['software_version'] = self.transport.remote_version
+            pass
         data['try'] = self.count
         self.count += 1
         logging.debug("%s:%d tried username '%s' with '%s'" % (self.addr, self.port,
