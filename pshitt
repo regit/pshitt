@@ -104,6 +104,8 @@ class Server (paramiko.ServerInterface):
         except:
             data['software_version'] = self.transport.remote_version
             pass
+        data['cipher'] = self.transport.remote_cipher
+        data['mac'] = self.transport.remote_mac
         data['try'] = self.count
         self.count += 1
         logging.debug("%s:%d tried username '%s' with '%s'" % (self.addr, self.port,
