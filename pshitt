@@ -97,7 +97,7 @@ class Server (paramiko.ServerInterface):
         else:
             data['src_ip'] = self.addr
         data['src_port'] = self.port
-        data['timestamp'] = datetime.isoformat(datetime.now())
+        data['timestamp'] = datetime.isoformat(datetime.utcnow())
         try:
             rversion = self.transport.remote_version.split('-', 2)[2]
             data['software_version'] = rversion
