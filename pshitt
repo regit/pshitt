@@ -113,7 +113,7 @@ class Server (paramiko.ServerInterface):
         return paramiko.AUTH_FAILED
 
     def check_auth_publickey(self, username, key):
-        logging.debug('Auth attempt with key: ' + hexlify(key.get_fingerprint()))
+        logging.debug(b'Auth attempt with key: ' + hexlify(key.get_fingerprint()))
         return paramiko.AUTH_FAILED
 
     def get_allowed_auths(self, username):
