@@ -10,14 +10,32 @@ fake SSH server designed to collect authentication data sent by intruders.
 It basically collects username and password used by SSH bruteforce software
 and writes the extracted data to a file in JSON format.
 
-pshitt is written in Python and use paramiko to implement the SSH layer.
+pshitt is written in Python and uses ``paramiko`` to implement the SSH layer.
+
+Installing pshitt
+=================
+
+From Python Packaging Index (PyPI) using pip ::
+
+  pip install pshitt
+
+Install from source ::
+
+  git clone https://github.com/regit/pshitt.git
+
+NOTE: if you are installing from source, make sure you install ``paramiko``
+and ``python-daemon`` packages.
 
 Running pshitt
 ==============
 
-Go into the source directory and run ::
+If you installed via pip ::
 
- ./pshitt -o passwords.json
+  ./pshitt -o passwords.json
+
+If you installed from source, go into the source directory and run ::
+
+ ./pshitt.py -o passwords.json
 
 This will run a fake SSH server listening on port 2200 to catch authentication
 data sent by the intruders. Information about SSH connection attempt will be
